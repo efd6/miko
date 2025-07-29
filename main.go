@@ -141,6 +141,8 @@ func newMiko() *miko {
 		Command(func() {
 			m.display.Configure(State("normal"))
 			m.display.Clear()
+			m.display.TagConfigure("output", Foreground("black"))
+			m.display.TagConfigure("error", Foreground("red"))
 			m.display.Configure(State("disabled"))
 		}),
 	)
