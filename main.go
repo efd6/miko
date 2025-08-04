@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -123,6 +124,16 @@ func newMiko(font string, size, tw int) *miko {
 			if src != "" {
 				m.src.Clear()
 				m.src.Insert("end", src)
+			}
+
+			data, err := m.formatData()
+			if err != nil {
+				m.printError(err)
+				return
+			}
+			if data != "" {
+				m.data.Clear()
+				m.data.Insert("end", data)
 			}
 		}),
 	)
@@ -293,8 +304,15 @@ func (m *miko) printError(err error) {
 		return
 	}
 	m.display.Configure(State("normal"))
-	m.display.Insert("end", err.Error(), "error")
+	m.display.Insert("end", ensureTrailingNewline(err.Error()), "error")
 	m.display.Configure(State("disabled"))
+}
+
+func ensureTrailingNewline(s string) string {
+	if strings.HasSuffix(s, "\n") {
+		return s
+	}
+	return s + "\n"
 }
 
 func (*miko) main() {
@@ -420,4 +438,27 @@ func (m *miko) celfmt() (string, error) {
 		return "", fmt.Errorf("celfmt: %s", &stderr)
 	}
 	return stdout.String(), nil
+}
+
+func (m *miko) formatData() (string, error) {
+	if strings.TrimSpace(m.data.Text()) == "" {
+		return "", nil
+	}
+
+	dec := json.NewDecoder(strings.NewReader(m.data.Text()))
+	dec.UseNumber()
+	var data any
+	if err := dec.Decode(&data); err != nil {
+		return "", fmt.Errorf("failed to decode JSON data: %w", err)
+	}
+
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(data); err != nil {
+		return "", fmt.Errorf("failed to encode JSON data: %w", err)
+	}
+
+	return buf.String(), nil
 }
