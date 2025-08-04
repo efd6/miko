@@ -25,12 +25,15 @@ func main() {
 	srcPath := flag.String("src", "", "path to a CEL program")
 	dataPath := flag.String("data", "", "path to a JSON object holding input (exposed as the label state)")
 	cfgPath := flag.String("cfg", "", "path to a YAML file holding run control configuration (see pkg.go.dev/github.com/elastic/mito/cmd/mito)")
+	font := flag.String("font", "Courier", "font family")
+	size := flag.Uint("face_size", 10, "font face size")
+	tw := flag.Uint("tw", 4, "width of tab stops measured in spaces")
 	flag.Parse()
-	if *txt != "" && (*dataPath != "" || *cfgPath != "" || *srcPath != "") {
+	if *txt != "" && (*dataPath != "" || *cfgPath != "" || *srcPath != "") || *tw == 0 {
 		flag.Usage()
 		os.Exit(2)
 	}
-	m := newMiko()
+	m := newMiko(*font, int(*size), int(*tw))
 	if *txt != "" {
 		b, err := os.ReadFile(*txt)
 		if err != nil {
@@ -86,7 +89,7 @@ type text struct {
 	tag  string
 }
 
-func newMiko() *miko {
+func newMiko(font string, size, tw int) *miko {
 	App.WmTitle("miko")
 	App.SetResizable(false, false)
 
@@ -172,10 +175,15 @@ func newMiko() *miko {
 		}),
 	)
 
+	face := NewFont(Family(font), Size(size))
+	tabWidth := face.Measure(App, strings.Repeat(" ", tw))
+
 	scrollSrcX := TScrollbar(Command(func(e *Event) { e.Xview(m.src) }), Orient("horizontal"))
 	scrollSrcY := TScrollbar(Command(func(e *Event) { e.Yview(m.src) }), Orient("vertical"))
 	m.src = Text(
+		Font(face),
 		Width(120),
+		Tabs(tabWidth),
 		Undo(true),
 		Wrap("none"),
 		Setgrid(true),
@@ -190,7 +198,9 @@ func newMiko() *miko {
 	scrollDataX := TScrollbar(Command(func(e *Event) { e.Xview(m.data) }), Orient("horizontal"))
 	scrollDataY := TScrollbar(Command(func(e *Event) { e.Yview(m.data) }), Orient("vertical"))
 	m.data = Text(
+		Font(face),
 		Width(120),
+		Tabs(tabWidth),
 		Undo(true),
 		Wrap("none"),
 		Setgrid(true),
@@ -205,7 +215,9 @@ func newMiko() *miko {
 	scrollConfigX := TScrollbar(Command(func(e *Event) { e.Xview(m.cfg) }), Orient("horizontal"))
 	scrollConfigY := TScrollbar(Command(func(e *Event) { e.Yview(m.cfg) }), Orient("vertical"))
 	m.cfg = Text(
+		Font(face),
 		Width(120),
+		Tabs(tabWidth),
 		Undo(true),
 		Wrap("none"),
 		Setgrid(true),
@@ -220,8 +232,10 @@ func newMiko() *miko {
 	scrollDisplayX := TScrollbar(Command(func(e *Event) { e.Xview(m.display) }), Orient("horizontal"))
 	scrollDisplayY := TScrollbar(Command(func(e *Event) { e.Yview(m.display) }), Orient("vertical"))
 	m.display = Text(
+		Font(face),
 		State("disabled"),
 		Width(120),
+		Tabs(tabWidth),
 		Wrap("none"),
 		Setgrid(true),
 		Background(White),
