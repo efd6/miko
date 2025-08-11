@@ -95,7 +95,9 @@ func newMiko(font string, size, tw int) *miko {
 
 	m := &miko{results: make(chan text)}
 
-	run := Button(
+	buttons := App.Frame()
+
+	run := buttons.Window.Button(
 		Txt("Run"),
 		Command(func() {
 			if ps := m.ps.Load(); ps != nil {
@@ -112,7 +114,7 @@ func newMiko(font string, size, tw int) *miko {
 		}),
 	)
 
-	format := Button(
+	format := buttons.Window.Button(
 		Txt("Format"),
 		Command(func() {
 			src, err := m.celfmt()
@@ -127,7 +129,7 @@ func newMiko(font string, size, tw int) *miko {
 		}),
 	)
 
-	cancel := Button(
+	cancel := buttons.Window.Button(
 		Txt("Cancel"),
 		Command(func() {
 			if ps := m.ps.Load(); ps != nil {
@@ -139,7 +141,7 @@ func newMiko(font string, size, tw int) *miko {
 		}),
 	)
 
-	clear := Button(
+	clear := buttons.Window.Button(
 		Txt("Clear Output"),
 		Command(func() {
 			m.display.Configure(State("normal"))
@@ -150,7 +152,7 @@ func newMiko(font string, size, tw int) *miko {
 		}),
 	)
 
-	snarf := Button(
+	snarf := buttons.Window.Button(
 		Txt("Snarf"),
 		Command(func() {
 			var ar txtar.Archive
@@ -175,103 +177,41 @@ func newMiko(font string, size, tw int) *miko {
 		}),
 	)
 
+	for i, b := range []*ButtonWidget{
+		run,
+		cancel,
+		format,
+		snarf,
+		clear,
+	} {
+		Grid(b, Row(0), Column(i), Sticky("news"))
+		GridColumnConfigure(buttons.Window, i, Weight(1))
+	}
+	Grid(buttons, Row(0), Column(0), Sticky("news"))
+
 	face := NewFont(Family(font), Size(size))
 	tabWidth := face.Measure(App, strings.Repeat(" ", tw))
 
-	scrollSrcX := TScrollbar(Command(func(e *Event) { e.Xview(m.src) }), Orient("horizontal"))
-	scrollSrcY := TScrollbar(Command(func(e *Event) { e.Yview(m.src) }), Orient("vertical"))
-	m.src = Text(
-		Font(face),
-		Width(120),
-		Tabs(tabWidth),
-		Undo(true),
-		Wrap("none"),
-		Setgrid(true),
-		Background(White),
-		Padx("1m"), Pady("1m"),
-		Blockcursor(false),
-		Insertunfocussed("hollow"),
-		Xscrollcommand(func(e *Event) { e.ScrollSet(scrollSrcX) }),
-		Yscrollcommand(func(e *Event) { e.ScrollSet(scrollSrcY) }),
-	)
+	for i, input := range []struct {
+		name  string
+		frame *FrameWidget
+		text  **TextWidget
+	}{
+		{name: "src (CEL)", frame: App.Frame(), text: &m.src},
+		{name: "data (JSON)", frame: App.Frame(), text: &m.data},
+		{name: "cfg (YAML)", frame: App.Frame(), text: &m.cfg},
+	} {
+		textWidget(input.text, input.frame, input.name, face, tabWidth, true)
+		Grid(input.frame, Row(i+1), Column(0), Sticky("news"))
+	}
 
-	scrollDataX := TScrollbar(Command(func(e *Event) { e.Xview(m.data) }), Orient("horizontal"))
-	scrollDataY := TScrollbar(Command(func(e *Event) { e.Yview(m.data) }), Orient("vertical"))
-	m.data = Text(
-		Font(face),
-		Width(120),
-		Tabs(tabWidth),
-		Undo(true),
-		Wrap("none"),
-		Setgrid(true),
-		Background(White),
-		Padx("1m"), Pady("1m"),
-		Blockcursor(false),
-		Insertunfocussed("hollow"),
-		Xscrollcommand(func(e *Event) { e.ScrollSet(scrollDataX) }),
-		Yscrollcommand(func(e *Event) { e.ScrollSet(scrollDataY) }),
-	)
-
-	scrollConfigX := TScrollbar(Command(func(e *Event) { e.Xview(m.cfg) }), Orient("horizontal"))
-	scrollConfigY := TScrollbar(Command(func(e *Event) { e.Yview(m.cfg) }), Orient("vertical"))
-	m.cfg = Text(
-		Font(face),
-		Width(120),
-		Tabs(tabWidth),
-		Undo(true),
-		Wrap("none"),
-		Setgrid(true),
-		Background(White),
-		Padx("1m"), Pady("1m"),
-		Blockcursor(false),
-		Insertunfocussed("hollow"),
-		Xscrollcommand(func(e *Event) { e.ScrollSet(scrollConfigX) }),
-		Yscrollcommand(func(e *Event) { e.ScrollSet(scrollConfigY) }),
-	)
-
-	scrollDisplayX := TScrollbar(Command(func(e *Event) { e.Xview(m.display) }), Orient("horizontal"))
-	scrollDisplayY := TScrollbar(Command(func(e *Event) { e.Yview(m.display) }), Orient("vertical"))
-	m.display = Text(
-		Font(face),
-		State("disabled"),
-		Width(120),
-		Tabs(tabWidth),
-		Wrap("none"),
-		Setgrid(true),
-		Background(White),
-		Padx("1m"), Pady("1m"),
-		Blockcursor(false),
-		Insertunfocussed("hollow"),
-		Xscrollcommand(func(e *Event) { e.ScrollSet(scrollDisplayX) }),
-		Yscrollcommand(func(e *Event) { e.ScrollSet(scrollDisplayY) }),
-	)
+	display := App.Frame()
+	textWidget(&m.display, display, "", face, tabWidth, false)
+	Grid(display, Row(0), Rowspan(5), Column(1), Sticky("news"))
+	GridRowConfigure(display, 1, Weight(1))
+	m.display.Configure(State("disabled"))
 	m.display.TagConfigure("output", Foreground("black"))
 	m.display.TagConfigure("error", Foreground("red"))
-
-	Grid(run, Row(0), Column(0), Sticky("news"))
-	Grid(cancel, Row(0), Column(1), Sticky("news"))
-	Grid(format, Row(0), Column(2), Sticky("news"))
-	Grid(snarf, Row(0), Column(3), Sticky("news"))
-	Grid(clear, Row(0), Column(4), Sticky("news"))
-
-	Grid(Label(Anchor("w"), Txt("src (CEL)")), Row(1), Sticky("w"))
-	Grid(m.src, Row(2), Column(0), Columnspan(5), Sticky("news"))
-	Grid(scrollSrcY, Row(2), Column(5), Sticky("news"))
-	Grid(scrollSrcX, Row(3), Column(0), Columnspan(5), Sticky("news"))
-
-	Grid(Label(Anchor("w"), Txt("data (JSON)")), Row(4), Sticky("w"))
-	Grid(m.data, Row(5), Column(0), Columnspan(5), Sticky("news"))
-	Grid(scrollDataY, Row(5), Column(5), Sticky("news"))
-	Grid(scrollDataX, Row(6), Column(0), Columnspan(5), Sticky("news"))
-
-	Grid(Label(Anchor("w"), Txt("cfg (YAML)")), Row(7), Sticky("w"))
-	Grid(m.cfg, Row(8), Column(0), Columnspan(5), Sticky("news"))
-	Grid(scrollConfigY, Row(8), Column(5), Sticky("news"))
-	Grid(scrollConfigX, Row(9), Column(0), Columnspan(5), Sticky("news"))
-
-	Grid(m.display, Row(0), Rowspan(9), Column(6), Sticky("news"))
-	Grid(scrollDisplayY, Row(0), Rowspan(9), Column(7), Sticky("news"))
-	Grid(scrollDisplayX, Row(9), Column(6), Sticky("news"))
 
 	Focus(m.src)
 
@@ -286,6 +226,32 @@ func newMiko(font string, size, tw int) *miko {
 	})
 
 	return m
+}
+
+func textWidget(dst **TextWidget, frame *FrameWidget, title string, face *FontFace, tabWidth int, undo bool) {
+	w := frame.Window
+	scrollX := w.TScrollbar(Command(func(e *Event) { e.Xview(*dst) }), Orient("horizontal"))
+	scrollY := w.TScrollbar(Command(func(e *Event) { e.Yview(*dst) }), Orient("vertical"))
+	*dst = w.Text(
+		Font(face),
+		Width(120),
+		Tabs(tabWidth),
+		Undo(undo),
+		Wrap("none"),
+		Setgrid(true),
+		Background(White),
+		Padx("1m"), Pady("1m"),
+		Blockcursor(false),
+		Insertunfocussed("hollow"),
+		Xscrollcommand(func(e *Event) { e.ScrollSet(scrollX) }),
+		Yscrollcommand(func(e *Event) { e.ScrollSet(scrollY) }),
+	)
+	if title != "" {
+		Grid(w.Label(Anchor("w"), Txt(title)), Row(0), Sticky("w"))
+	}
+	Grid(*dst, Row(1), Column(0), Sticky("news"))
+	Grid(scrollY, Row(1), Column(1), Sticky("news"))
+	Grid(scrollX, Row(2), Column(0), Sticky("news"))
 }
 
 func (m *miko) printError(err error) {
