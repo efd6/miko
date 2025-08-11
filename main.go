@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -125,6 +126,15 @@ func newMiko(font string, size, tw int) *miko {
 			if src != "" {
 				m.src.Clear()
 				m.src.Insert("end", src)
+			}
+			data, err := m.jsonfmt()
+			if err != nil {
+				m.printError(err)
+				return
+			}
+			if data != "" {
+				m.data.Clear()
+				m.data.Insert("end", data)
 			}
 		}),
 	)
@@ -373,8 +383,12 @@ func (m *miko) mito(keep bool) (*os.Process, error) {
 }
 
 func (m *miko) celfmt() (string, error) {
+	text := m.src.Text()
+	if strings.TrimSpace(text) == "" {
+		return "", nil
+	}
 	cmd := execabs.Command("celfmt")
-	cmd.Stdin = strings.NewReader(m.src.Text())
+	cmd.Stdin = strings.NewReader(text)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -386,4 +400,17 @@ func (m *miko) celfmt() (string, error) {
 		return "", fmt.Errorf("celfmt: %s", &stderr)
 	}
 	return stdout.String(), nil
+}
+
+func (m *miko) jsonfmt() (string, error) {
+	text := m.data.Text()
+	if strings.TrimSpace(text) == "" {
+		return "", nil
+	}
+	var buf bytes.Buffer
+	err := json.Indent(&buf, []byte(text), "", "\t")
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }
