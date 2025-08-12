@@ -5,14 +5,14 @@ go 1.24.5
 require (
 	golang.org/x/sys v0.33.0
 	golang.org/x/tools v0.34.0
-	modernc.org/tk9.0 v1.71.0
+	modernc.org/tk9.0 v1.71.2
 )
 
 require (
 	github.com/adrg/xdg v0.5.3 // indirect
 	github.com/disintegration/imaging v1.6.2 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/ebitengine/purego v0.8.2 // indirect
+	github.com/ebitengine/purego v0.8.4 // indirect
 	github.com/evilsocket/islazy v1.11.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
@@ -22,7 +22,7 @@ require (
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
 	golang.org/x/image v0.26.0 // indirect
 	golang.org/x/net v0.41.0 // indirect
-	modernc.org/fileutil v1.3.8 // indirect
+	modernc.org/fileutil v1.3.15 // indirect
 	modernc.org/fsm v1.3.2 // indirect
 	modernc.org/gc/v3 v3.1.0 // indirect
 	modernc.org/knuth v0.5.5 // indirect
@@ -37,10 +37,10 @@ require (
 	modernc.org/libfontconfig v0.8.11 // indirect
 	modernc.org/libfreetype v0.9.21 // indirect
 	modernc.org/libmd v0.12.17 // indirect
-	modernc.org/libtcl9.0 v0.16.9 // indirect
+	modernc.org/libtcl9.0 v0.16.11 // indirect
 	modernc.org/libtk9.0 v0.16.8 // indirect
 	modernc.org/libxcb v0.12.2 // indirect
-	modernc.org/libz v0.16.18 // indirect
+	modernc.org/libz v0.16.19 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
 	modernc.org/ngrab v0.1.0 // indirect
@@ -48,6 +48,6 @@ require (
 	modernc.org/regexp v1.7.9 // indirect
 	modernc.org/sortutil v1.2.1 // indirect
 	modernc.org/strutil v1.2.1 // indirect
-	modernc.org/tcl9.0 v0.16.15 // indirect
+	modernc.org/tcl9.0 v0.16.17 // indirect
 	modernc.org/token v1.1.0 // indirect
 )
