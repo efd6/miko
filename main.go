@@ -439,7 +439,7 @@ func (m *miko) celfmt() (string, error) {
 		}
 		return "", fmt.Errorf("celfmt: %s", &stderr)
 	}
-	return stdout.String(), nil
+	return strings.TrimSpace(stdout.String()), nil
 }
 
 func (m *miko) jsonfmt() (string, error) {
@@ -452,5 +452,5 @@ func (m *miko) jsonfmt() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return buf.String(), nil
+	return strings.TrimSpace(buf.String()), nil
 }
