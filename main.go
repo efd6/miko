@@ -92,11 +92,36 @@ type text struct {
 
 func newMiko(font string, size, tw int) *miko {
 	App.WmTitle("miko")
-	App.SetResizable(false, false)
+	// Allow the main window to be resized.
+	App.SetResizable(true, true)
 
 	m := &miko{results: make(chan text)}
 
-	buttons := App.Frame()
+	// Use a TPanedwindow with a horizontal orientation for the main layout.
+	// This will create two panes (left and right) separated by a movable sash.
+	paned := App.TPanedwindow(Orient("horizontal"))
+	Grid(paned, Row(0), Column(0), Sticky("news"))
+
+	// Configure the main window's grid so that the paned window expands
+	// to fill the available space when the window is resized.
+	GridRowConfigure(App, 0, Weight(1))
+	GridColumnConfigure(App, 0, Weight(1))
+
+	// Create frames for the left and right panes.
+	leftPane := App.Frame()
+	rightPane := App.Frame()
+
+	// Add the frames to the paned window. The 'Weight' option determines
+	// the initial size ratio between the panes.
+	paned.Add(leftPane.Window, Weight(1))
+	paned.Add(rightPane.Window, Weight(2))
+
+	// --- Configure the Left Pane ---
+	// This pane will contain the control buttons and the three input text widgets.
+	// Configure its grid so that the content can expand horizontally.
+	GridColumnConfigure(leftPane, 0, Weight(1))
+
+	buttons := leftPane.Frame()
 
 	run := buttons.Window.Button(
 		Txt("Run"),
@@ -197,28 +222,39 @@ func newMiko(font string, size, tw int) *miko {
 		Grid(b, Row(0), Column(i), Sticky("news"))
 		GridColumnConfigure(buttons.Window, i, Weight(1))
 	}
-	Grid(buttons, Row(0), Column(0), Sticky("news"))
+	// Place the buttons frame in the first row of the left pane.
+	// It should expand horizontally ("ew") but not vertically.
+	Grid(buttons, Row(0), Column(0), Sticky("ew"))
 
 	face := NewFont(Family(font), Size(size))
 	tabWidth := face.Measure(App, strings.Repeat(" ", tw))
 
+	// Create and place the three input text widgets in the left pane.
 	for i, input := range []struct {
-		name  string
-		frame *FrameWidget
-		text  **TextWidget
+		name string
+		text **TextWidget
 	}{
-		{name: "src (CEL)", frame: App.Frame(), text: &m.src},
-		{name: "data (JSON)", frame: App.Frame(), text: &m.data},
-		{name: "cfg (YAML)", frame: App.Frame(), text: &m.cfg},
+		{name: "src (CEL)", text: &m.src},
+		{name: "data (JSON)", text: &m.data},
+		{name: "cfg (YAML)", text: &m.cfg},
 	} {
-		textWidget(input.text, input.frame, input.name, face, tabWidth, true)
-		Grid(input.frame, Row(i+1), Column(0), Sticky("news"))
+		// Each text widget gets its own frame.
+		frame := leftPane.Frame()
+		textWidget(input.text, frame, input.name, face, tabWidth, true)
+		Grid(frame, Row(i+1), Column(0), Sticky("news"))
+		// Configure the row in the left pane to expand vertically.
+		GridRowConfigure(leftPane, i+1, Weight(1))
 	}
 
-	display := App.Frame()
-	textWidget(&m.display, display, "", face, tabWidth, false)
-	Grid(display, Row(0), Rowspan(5), Column(1), Sticky("news"))
-	GridRowConfigure(display, 1, Weight(1))
+	// --- Configure the Right Pane ---
+	// This pane contains the single output display widget.
+	// Configure its grid to allow the content to expand in both directions.
+	GridRowConfigure(rightPane, 0, Weight(1))
+	GridColumnConfigure(rightPane, 0, Weight(1))
+	displayFrame := rightPane.Frame()
+	textWidget(&m.display, displayFrame, "", face, tabWidth, false)
+	Grid(displayFrame, Row(0), Column(0), Sticky("news"))
+
 	m.display.Configure(State("disabled"))
 	m.display.TagConfigure("output", Foreground("black"))
 	m.display.TagConfigure("error", Foreground("red"))
@@ -240,15 +276,17 @@ func newMiko(font string, size, tw int) *miko {
 
 func textWidget(dst **TextWidget, frame *FrameWidget, title string, face *FontFace, tabWidth int, undo bool) {
 	w := frame.Window
+	// Configure the grid within the widget's frame to allow the text area to expand.
+	GridRowConfigure(w, 1, Weight(1))
+	GridColumnConfigure(w, 0, Weight(1))
+
 	scrollX := w.TScrollbar(Command(func(e *Event) { e.Xview(*dst) }), Orient("horizontal"))
 	scrollY := w.TScrollbar(Command(func(e *Event) { e.Yview(*dst) }), Orient("vertical"))
 	*dst = w.Text(
 		Font(face),
-		Width(120),
 		Tabs(tabWidth),
 		Undo(undo),
 		Wrap("none"),
-		Setgrid(true),
 		Background(White),
 		Padx("1m"), Pady("1m"),
 		Blockcursor(false),
@@ -257,11 +295,13 @@ func textWidget(dst **TextWidget, frame *FrameWidget, title string, face *FontFa
 		Yscrollcommand(func(e *Event) { e.ScrollSet(scrollY) }),
 	)
 	if title != "" {
-		Grid(w.Label(Anchor("w"), Txt(title)), Row(0), Sticky("w"))
+		Grid(w.Label(Anchor("w"), Txt(title)), Row(0), Column(0), Sticky("w"))
 	}
+	// The text widget expands in all directions ("news").
 	Grid(*dst, Row(1), Column(0), Sticky("news"))
-	Grid(scrollY, Row(1), Column(1), Sticky("news"))
-	Grid(scrollX, Row(2), Column(0), Sticky("news"))
+	// The scrollbars only expand in their respective directions.
+	Grid(scrollY, Row(1), Column(1), Sticky("ns"))
+	Grid(scrollX, Row(2), Column(0), Sticky("ew"))
 }
 
 func (m *miko) printError(err error) {
@@ -269,7 +309,7 @@ func (m *miko) printError(err error) {
 		return
 	}
 	m.display.Configure(State("normal"))
-	m.display.Insert("end", err.Error(), "error")
+	m.display.Insert("end", err.Error()+"\n", "error")
 	m.display.Configure(State("disabled"))
 }
 
