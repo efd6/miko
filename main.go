@@ -19,6 +19,7 @@ import (
 	"golang.org/x/sys/execabs"
 	"golang.org/x/tools/txtar"
 	. "modernc.org/tk9.0"
+	. "modernc.org/tk9.0/extensions/autoscroll"
 )
 
 func main() {
@@ -94,6 +95,8 @@ func newMiko(font string, size, tw int) *miko {
 	App.WmTitle("miko")
 	// Allow the main window to be resized.
 	App.SetResizable(true, true)
+	// Only render scroll bars when needed.
+	InitializeExtension("autoscroll")
 
 	m := &miko{results: make(chan text)}
 
@@ -266,6 +269,7 @@ func newMiko(font string, size, tw int) *miko {
 		case text := <-m.results:
 			m.display.Configure(State("normal"))
 			m.display.Insert("end", text.data, text.tag)
+			m.display.See(END)
 			m.display.Configure(State("disabled"))
 		default:
 		}
@@ -280,8 +284,8 @@ func textWidget(dst **TextWidget, frame *FrameWidget, title string, face *FontFa
 	GridRowConfigure(w, 1, Weight(1))
 	GridColumnConfigure(w, 0, Weight(1))
 
-	scrollX := w.TScrollbar(Command(func(e *Event) { e.Xview(*dst) }), Orient("horizontal"))
-	scrollY := w.TScrollbar(Command(func(e *Event) { e.Yview(*dst) }), Orient("vertical"))
+	scrollX := Autoscroll(w.TScrollbar(Command(func(e *Event) { e.Xview(*dst) }), Orient("horizontal")).Window)
+	scrollY := Autoscroll(w.TScrollbar(Command(func(e *Event) { e.Yview(*dst) }), Orient("vertical")).Window)
 	*dst = w.Text(
 		Font(face),
 		Tabs(tabWidth),
