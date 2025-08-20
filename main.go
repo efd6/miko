@@ -78,12 +78,13 @@ func main() {
 }
 
 type miko struct {
-	ps      atomic.Pointer[os.Process]
-	results chan text
-	src     *TextWidget
-	data    *TextWidget
-	cfg     *TextWidget
-	display *TextWidget
+	ps       atomic.Pointer[os.Process]
+	results  chan text
+	src      *TextWidget
+	data     *TextWidget
+	cfg      *TextWidget
+	display  *TextWidget
+	insecure bool
 }
 
 type text struct {
@@ -215,15 +216,21 @@ func newMiko(font string, size, tw int) *miko {
 		}),
 	)
 
-	for i, b := range []*ButtonWidget{
-		run,
-		cancel,
-		format,
-		snarf,
-		clear,
-	} {
-		Grid(b, Row(0), Column(i), Sticky("news"))
-		GridColumnConfigure(buttons.Window, i, Weight(1))
+	insecure := buttons.Window.Checkbutton(
+		Txt("Insecure HTTPS"),
+		Variable(&m.insecure),
+		Command(func() { m.insecure = !m.insecure }),
+	)
+
+	buttonLayout := [][]Widget{
+		{run, cancel, format, snarf, clear},
+		{insecure},
+	}
+	for i, r := range buttonLayout {
+		for j, b := range r {
+			Grid(b, Row(i), Column(j), Sticky("news"))
+			GridColumnConfigure(buttons.Window, j, Weight(1))
+		}
 	}
 	// Place the buttons frame in the first row of the left pane.
 	// It should expand horizontally ("ew") but not vertically.
@@ -354,6 +361,9 @@ func (m *miko) mito(keep bool) (*os.Process, error) {
 			return nil, err
 		}
 		args = append(args, "-cfg", cfgPath)
+	}
+	if m.insecure {
+		args = append(args, "-insecure")
 	}
 	srcPath := filepath.Join(dir, "src.cel")
 	err = os.WriteFile(srcPath, []byte(src), 0o600)
