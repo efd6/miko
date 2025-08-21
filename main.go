@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -275,7 +276,7 @@ func newMiko(font string, size, tw int) *miko {
 		select {
 		case text := <-m.results:
 			m.display.Configure(State("normal"))
-			m.display.Insert("end", text.data, text.tag)
+			m.display.Insert("end", text.data+"\n", text.tag)
 			m.display.See(END)
 			m.display.Configure(State("disabled"))
 		default:
@@ -384,15 +385,19 @@ func (m *miko) mito(keep bool) (*os.Process, error) {
 	ctxStderr, cancelStderr := context.WithCancel(context.Background())
 	go func() {
 		defer cancelStdout()
-		var buf [4096]byte
+		dec := json.NewDecoder(stdout)
 		for {
-			n, err := stdout.Read(buf[:])
-			if n != 0 {
-				m.results <- text{data: string(buf[:n]), tag: "output"}
-			}
+			var v any
+			err := dec.Decode(&v)
 			var pe *fs.PathError
 			switch {
 			case err == nil:
+				b, err := json.MarshalIndent(v, "", "\t")
+				if err != nil {
+					log.Println(err)
+					return
+				}
+				m.results <- text{data: string(b), tag: "output"}
 			case err == io.EOF, errors.As(err, &pe) && pe.Err == fs.ErrClosed:
 				return
 			default:
@@ -403,21 +408,19 @@ func (m *miko) mito(keep bool) (*os.Process, error) {
 	}()
 	go func() {
 		defer cancelStderr()
-		var buf [4096]byte
-		for {
-			n, err := stderr.Read(buf[:])
-			if n != 0 {
-				m.results <- text{data: string(buf[:n]), tag: "error"}
-			}
-			var pe *fs.PathError
-			switch {
-			case err == nil:
-			case err == io.EOF, errors.As(err, &pe) && pe.Err == fs.ErrClosed:
-				return
-			default:
-				log.Println(err)
-				return
-			}
+		sc := bufio.NewScanner(stderr)
+		for sc.Scan() {
+			m.results <- text{data: sc.Text(), tag: "error"}
+		}
+		err := sc.Err()
+		var pe *fs.PathError
+		switch {
+		case err == nil:
+		case err == io.EOF, errors.As(err, &pe) && pe.Err == fs.ErrClosed:
+			return
+		default:
+			log.Println(err)
+			return
 		}
 	}()
 	err = cmd.Start()
