@@ -31,12 +31,13 @@ func main() {
 	font := flag.String("font", "Courier", "font family")
 	size := flag.Uint("face_size", 10, "font face size")
 	tw := flag.Uint("tw", 4, "width of tab stops measured in spaces")
+	poll := flag.Duration("fr", 10*time.Millisecond, "refresh poll rate")
 	flag.Parse()
 	if *txt != "" && (*dataPath != "" || *cfgPath != "" || *srcPath != "") || *tw == 0 {
 		flag.Usage()
 		os.Exit(2)
 	}
-	m := newMiko(*font, int(*size), int(*tw))
+	m := newMiko(*font, int(*size), int(*tw), *poll)
 	if *txt != "" {
 		b, err := os.ReadFile(*txt)
 		if err != nil {
@@ -87,6 +88,7 @@ type miko struct {
 	display     *TextWidget
 	insecure    bool
 	logRequests bool
+	dumpCrash   bool
 }
 
 type text struct {
@@ -94,7 +96,7 @@ type text struct {
 	tag  string
 }
 
-func newMiko(font string, size, tw int) *miko {
+func newMiko(font string, size, tw int, poll time.Duration) *miko {
 	App.WmTitle("miko")
 	// Allow the main window to be resized.
 	App.SetResizable(true, true)
@@ -230,9 +232,15 @@ func newMiko(font string, size, tw int) *miko {
 		Command(func() { m.logRequests = !m.logRequests }),
 	)
 
+	dumpCrash := buttons.Window.Checkbutton(
+		Txt("Dump Crashes"),
+		Variable(&m.insecure),
+		Command(func() { m.dumpCrash = !m.dumpCrash }),
+	)
+
 	buttonLayout := [][]Widget{
 		{run, cancel, format, snarf, clear},
-		{insecure, logRequests},
+		{insecure, logRequests, dumpCrash},
 	}
 	for i, r := range buttonLayout {
 		for j, b := range r {
@@ -279,7 +287,7 @@ func newMiko(font string, size, tw int) *miko {
 
 	Focus(m.src)
 
-	NewTicker(100*time.Millisecond, func() {
+	NewTicker(poll, func() {
 		select {
 		case text := <-m.results:
 			m.display.Configure(State("normal"))
@@ -375,6 +383,9 @@ func (m *miko) mito(keep bool) (*os.Process, error) {
 	}
 	if m.logRequests {
 		args = append(args, "-log_requests")
+	}
+	if m.dumpCrash {
+		args = append(args, "-dump", "error")
 	}
 	srcPath := filepath.Join(dir, "src.cel")
 	err = os.WriteFile(srcPath, []byte(src), 0o600)
