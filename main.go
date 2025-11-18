@@ -488,7 +488,7 @@ func (m *miko) jsonfmt() (string, error) {
 	var buf bytes.Buffer
 	err := json.Indent(&buf, []byte(text), "", "\t")
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to format json data: %w", err)
 	}
 	return strings.TrimSpace(buf.String()), nil
 }
